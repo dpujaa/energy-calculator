@@ -1,0 +1,28 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+import joblib
+
+# Load final dataset
+df = pd.read_csv("/Users/kabirprasad/Downloads/final_dataset_by_zip.csv")
+
+# For each row, calculate average monthly temperature
+df["avg_monthly_temp"] = df[[f"temp_month_{i}" for i in range(1, 13)]].mean(axis=1)
+
+# Drop NaNs
+df = df.dropna(subset=["Total Usage", "avg_household_size", "avg_monthly_temp"])
+
+# Features: We'll use actual weather for the month later
+X = df[["avg_monthly_temp", "avg_household_size", "Total Usage"]]  # usage as a proxy for ZIP behavior
+y = df["Total Usage"]  # you can replace this later with per-household or per-zip estimate if needed
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train model
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Save model
+joblib.dump(model, "electricity_bill_predictor.pkl")
+print("✅ Model retrained and saved.")

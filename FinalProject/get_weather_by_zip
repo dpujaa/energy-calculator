@@ -1,0 +1,38 @@
+import pandas as pd
+import requests
+import time
+
+def get_lat_lon_for_zip(zip_code):
+    response = requests.get(f"http://api.zippopotam.us/us/{zip_code}")
+    if response.status_code == 200:
+        data = response.json()
+        return float(data['places'][0]['latitude']), float(data['places'][0]['longitude'])
+    return None, None
+
+def get_monthly_avg_temp(lat, lon):
+    url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date=2023-01-01&end_date=2023-12-31&monthly=temperature_2m_mean&temperature_unit=fahrenheit"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()["monthly"]["temperature_2m_mean"]
+    return [None] * 12
+
+# Load synthetic dataset
+df = pd.read_csv("synthetic_gemini_data.csv")
+unique_zips = df["zip_code"].unique()
+
+# Create temperature rows
+temp_rows = []
+
+for zip_code in unique_zips:
+    lat, lon = get_lat_lon_for_zip(zip_code)
+    if lat is None:
+        continue
+    temps = get_monthly_avg_temp(lat, lon)
+    for i, temp in enumerate(temps):
+        temp_rows.append({"zip_code": zip_code, "month": i+1, "avg_temp": temp})
+    time.sleep(1)  # respect API rate limits
+
+# Save weather data
+weather_df = pd.DataFrame(temp_rows)
+weather_df.to_csv("weather_by_zip_month.csv", index=False)
+print("✅ Saved weather data to weather_by_zip_month.csv")

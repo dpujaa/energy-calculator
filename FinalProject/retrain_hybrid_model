@@ -1,0 +1,28 @@
+import pandas as pd
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.model_selection import train_test_split
+import joblib
+
+# Load synthetic + weather data
+synthetic = pd.read_csv("synthetic_gemini_data.csv")
+weather = pd.read_csv("weather_by_zip_month.csv")
+
+# Merge datasets
+df = pd.merge(synthetic, weather, on=["zip_code", "month"], how="left")
+
+# Drop incomplete rows
+df = df.dropna(subset=["estimated_kwh", "avg_temp", "household_size"])
+
+# Final features and target
+X = df[["avg_temp", "household_size"]]
+y = df["estimated_kwh"]
+
+# Train model
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+model = GradientBoostingRegressor(n_estimators=300, learning_rate=0.05, max_depth=4)
+model.fit(X_train, y_train)
+
+# Save model
+joblib.dump(model, "electricity_bill_predictor.pkl")
+df.to_csv("hybrid_dataset.csv", index=False)
+print("✅ Model trained and saved. Dataset saved to hybrid_dataset.csv")
